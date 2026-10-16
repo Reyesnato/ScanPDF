@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.reynato.scannperiqundf.data.DocumentRepository
 import com.reynato.scannperiqundf.data.ScanDocument
+import com.reynato.scannperiqundf.data.ScanFilter
 import com.reynato.scannperiqundf.data.ScanPage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,6 +47,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val doc = _document.value ?: return
         viewModelScope.launch {
             repo.save(doc.copy(updatedAt = System.currentTimeMillis()))
+        }
+    }
+    fun setFilter(docId: String, pageId: String, filter: ScanFilter) {
+        viewModelScope.launch {
+            repo.setFilter(docId, pageId, filter)
+            _document.value = repo.getDocument(docId)
         }
     }
 }

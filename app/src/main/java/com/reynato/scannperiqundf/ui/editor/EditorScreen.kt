@@ -38,6 +38,20 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import com.reynato.scannperiqundf.data.ScanFilter
+import com.reynato.scannperiqundf.data.ScanPage
+import com.reynato.scannperiqundf.imaging.Filters
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +66,7 @@ fun EditorScreen(
     val reorderState = rememberReorderableLazyGridState(gridState) { from, to ->
         viewModel.movePage(from.index, to.index)
     }
+    var selectedPage by remember { mutableStateOf<ScanPage?>(null) }
 
     LaunchedEffect(docId) { viewModel.load(docId) }
 
@@ -94,7 +109,8 @@ fun EditorScreen(
                 }
             }
         }
-    ) { padding ->
+    )
+    { padding ->
         val doc = document
         if (doc == null || doc.pages.isEmpty()) {
             Box(
@@ -120,8 +136,9 @@ fun EditorScreen(
                     val index = doc.pages.indexOf(page) + 1
                     ReorderableItem(reorderState, key = page.id) { isDragging ->
                         Card(
+                            onClick = { selectedPage = page },
                             modifier = Modifier.longPressDraggableHandle(
-                                onDragStopped = { viewModel.saveOrder() }
+                                onDragStopped = { viewModel.saveOrder()}
                             )
                         ) {
                             Column {
@@ -129,6 +146,9 @@ fun EditorScreen(
                                     model = viewModel.pageFile(docId, page),
                                     contentDescription = "Página $index",
                                     contentScale = ContentScale.Crop,
+                                    colorFilter = Filters.matrix(page.filter)?.let {
+                                        ColorFilter.colorMatrix(ColorMatrix(it))
+                                    },
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .aspectRatio(3f / 4f)
@@ -143,5 +163,64 @@ fun EditorScreen(
                 }
             }
         }
+    }
+
+    selectedPage?.let { page ->
+        AlertDialog(
+            onDismissRequest = { selectedPage = null },
+            title = { Text("Filtro de la página") },
+            text = {
+                Column {
+                    ScanFilter.entries.forEach { filtro ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setFilter(docId, page.id, filtro)
+                                    selectedPage = null
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = page.filter == filtro, onClick = null)
+                            Spacer(Modifier.width(12.dp))
+                            Text(Filters.label(filtro))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedPage = null }) { Text("Cerrar") }
+            }
+        )
+    }
+    selectedPage?.let { page ->
+        AlertDialog(
+            onDismissRequest = { selectedPage = null },
+            title = { Text("Filtro de la página") },
+            text = {
+                Column {
+                    ScanFilter.entries.forEach { filtro ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setFilter(docId, page.id, filtro)
+                                    selectedPage = null
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = page.filter == filtro, onClick = null)
+                            Spacer(Modifier.width(12.dp))
+                            Text(Filters.label(filtro))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedPage = null }) { Text("Cerrar") }
+            }
+        )
     }
 }
