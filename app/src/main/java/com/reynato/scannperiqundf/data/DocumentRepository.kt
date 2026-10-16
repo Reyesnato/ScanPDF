@@ -1,9 +1,7 @@
 package com.reynato.scannperiqundf.data
 
-import ScanDocument
-import ScanFilter
-import ScanPage
 import android.content.Context
+import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -13,7 +11,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
-import android.net.Uri
 
 class DocumentRepository(private val context: Context) {
 

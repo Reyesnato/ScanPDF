@@ -1,3 +1,4 @@
+package com.reynato.scannperiqundf.data
 enum class ScanFilter { SCAN, ORIGINAL, GRAYSCALE, BLACK_WHITE}
 
 data class ScanPage(

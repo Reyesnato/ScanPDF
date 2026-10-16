@@ -6,6 +6,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.reynato.scannperiqundf.ui.editor.EditorScreen
 import androidx.navigation.navArgument
 import com.reynato.scannperiqundf.ui.home.HomeScreen
 import com.reynato.scannperiqundf.camera.CameraScreen
@@ -28,7 +29,11 @@ fun AppNavHost() {
             arguments = listOf(navArgument("docId") { type = NavType.StringType })
         ) { entry ->
             val docId = entry.arguments?.getString("docId") ?: return@composable
-            Text("Editor de $docId")
+            EditorScreen(
+                docId = docId,
+                onTakePhotos = { navController.navigate(Routes.camera(docId)) },
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable(
@@ -38,7 +43,14 @@ fun AppNavHost() {
             val docId = entry.arguments?.getString("docId") ?: return@composable
             CameraScreen(
                 docId = docId,
-                onDone = {navController.popBackStack()}
+                onDone = {
+                    val volvio = navController.popBackStack(Routes.EDITOR, false)
+                    if (!volvio) {
+                        navController.navigate(Routes.editor(docId)) {
+                            popUpTo(Routes.HOME)
+                        }
+                    }
+                }
             )
         }
     }

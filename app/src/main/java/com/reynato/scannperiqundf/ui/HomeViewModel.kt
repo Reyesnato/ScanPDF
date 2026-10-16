@@ -1,10 +1,10 @@
 package com.reynato.scannperiqundf.ui
 
-import ScanDocument
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.reynato.scannperiqundf.data.DocumentRepository
+import com.reynato.scannperiqundf.data.ScanDocument
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
