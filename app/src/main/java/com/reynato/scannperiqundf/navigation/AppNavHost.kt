@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.reynato.scannperiqundf.ui.home.HomeScreen
 
 @Composable
 fun AppNavHost() {
@@ -15,7 +16,10 @@ fun AppNavHost() {
     NavHost(navController = navController, startDestination = Routes.HOME) {
 
         composable(Routes.HOME) {
-            Text("Pantalla de inicio")
+            HomeScreen(
+                onOpenDocument = {id -> navController.navigate(Routes.editor(id))},
+                onNewScan = { id -> navController.navigate(Routes.camera(id))}
+            )
         }
 
         composable(
