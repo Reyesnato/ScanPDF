@@ -33,4 +33,19 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun pageFile(docId: String, page: ScanPage): File = repo.pageFile(docId, page)
+
+    fun movePage(from: Int, to: Int) {
+        val doc = _document.value ?: return
+        if (from !in doc.pages.indices || to !in doc.pages.indices) return
+        val lista = doc.pages.toMutableList()
+        lista.add(to, lista.removeAt(from))
+        _document.value = doc.copy(pages = lista)
+    }
+
+    fun saveOrder() {
+        val doc = _document.value ?: return
+        viewModelScope.launch {
+            repo.save(doc.copy(updatedAt = System.currentTimeMillis()))
+        }
+    }
 }

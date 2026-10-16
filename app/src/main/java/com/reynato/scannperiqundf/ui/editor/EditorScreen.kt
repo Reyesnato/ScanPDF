@@ -33,6 +33,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyGridState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 
@@ -45,6 +48,10 @@ fun EditorScreen(
     viewModel: EditorViewModel = viewModel()
 ) {
     val document by viewModel.document.collectAsState()
+    val gridState = rememberLazyGridState()
+    val reorderState = rememberReorderableLazyGridState(gridState) { from, to ->
+        viewModel.movePage(from.index, to.index)
+    }
 
     LaunchedEffect(docId) { viewModel.load(docId) }
 
@@ -67,7 +74,9 @@ fun EditorScreen(
         },
         bottomBar = {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(onClick = onTakePhotos, modifier = Modifier.weight(1f)) {
@@ -89,7 +98,9 @@ fun EditorScreen(
         val doc = document
         if (doc == null || doc.pages.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
                 contentAlignment = Alignment.Center
             ) {
                 Text("Este documento aún no tiene páginas")
@@ -97,22 +108,36 @@ fun EditorScreen(
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
-                modifier = Modifier.fillMaxSize().padding(padding),
+                state = gridState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(doc.pages, key = { it.id }) { page ->
                     val index = doc.pages.indexOf(page) + 1
-                    Card {
-                        Column {
-                            AsyncImage(
-                                model = viewModel.pageFile(docId, page),
-                                contentDescription = "Página $index",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxWidth().aspectRatio(3f / 4f)
+                    ReorderableItem(reorderState, key = page.id) { isDragging ->
+                        Card(
+                            modifier = Modifier.longPressDraggableHandle(
+                                onDragStopped = { viewModel.saveOrder() }
                             )
-                            Text("Página $index", modifier = Modifier.padding(8.dp))
+                        ) {
+                            Column {
+                                AsyncImage(
+                                    model = viewModel.pageFile(docId, page),
+                                    contentDescription = "Página $index",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(3f / 4f)
+                                )
+                                Text(
+                                    if (isDragging) "Moviendo…" else "Página $index",
+                                    modifier = Modifier.padding(8.dp)
+                                )
+                            }
                         }
                     }
                 }
