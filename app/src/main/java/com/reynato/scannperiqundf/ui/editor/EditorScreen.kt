@@ -1,5 +1,6 @@
 package com.reynato.scannperiqundf.ui.editor
 
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -49,6 +50,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.platform.LocalContext
 import com.reynato.scannperiqundf.data.ScanFilter
 import com.reynato.scannperiqundf.data.ScanPage
 import com.reynato.scannperiqundf.imaging.Filters
@@ -67,7 +69,20 @@ fun EditorScreen(
         viewModel.movePage(from.index, to.index)
     }
     var selectedPage by remember { mutableStateOf<ScanPage?>(null) }
-
+    val context = LocalContext.current
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri ->
+        if (uri != null) {
+            viewModel.exportPdf(docId, uri) { ok ->
+                Toast.makeText(
+                    context,
+                    if (ok) "PDF guardado" else "No se pudo guardar el PDF",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
     LaunchedEffect(docId) { viewModel.load(docId) }
 
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -83,6 +98,19 @@ fun EditorScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    }
+                },
+                actions = {
+                    TextButton(
+                        enabled = document?.pages?.isNotEmpty() == true,
+                        onClick = {
+                            val nombre = (document?.title ?: "Escaneo")
+                                .replace("/", "-")
+                                .replace(":", "-")
+                            exportLauncher.launch("$nombre.pdf")
+                        }
+                    ) {
+                        Text("Exportar PDF")
                     }
                 }
             )
@@ -109,8 +137,7 @@ fun EditorScreen(
                 }
             }
         }
-    )
-    { padding ->
+    ) { padding ->
         val doc = document
         if (doc == null || doc.pages.isEmpty()) {
             Box(
@@ -138,7 +165,7 @@ fun EditorScreen(
                         Card(
                             onClick = { selectedPage = page },
                             modifier = Modifier.longPressDraggableHandle(
-                                onDragStopped = { viewModel.saveOrder()}
+                                onDragStopped = { viewModel.saveOrder() }
                             )
                         ) {
                             Column {
@@ -165,35 +192,6 @@ fun EditorScreen(
         }
     }
 
-    selectedPage?.let { page ->
-        AlertDialog(
-            onDismissRequest = { selectedPage = null },
-            title = { Text("Filtro de la página") },
-            text = {
-                Column {
-                    ScanFilter.entries.forEach { filtro ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    viewModel.setFilter(docId, page.id, filtro)
-                                    selectedPage = null
-                                }
-                                .padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(selected = page.filter == filtro, onClick = null)
-                            Spacer(Modifier.width(12.dp))
-                            Text(Filters.label(filtro))
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { selectedPage = null }) { Text("Cerrar") }
-            }
-        )
-    }
     selectedPage?.let { page ->
         AlertDialog(
             onDismissRequest = { selectedPage = null },

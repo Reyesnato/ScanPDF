@@ -8,9 +8,12 @@ import com.reynato.scannperiqundf.data.DocumentRepository
 import com.reynato.scannperiqundf.data.ScanDocument
 import com.reynato.scannperiqundf.data.ScanFilter
 import com.reynato.scannperiqundf.data.ScanPage
+import com.reynato.scannperiqundf.pdf.PdfExporter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class EditorViewModel(app: Application) : AndroidViewModel(app) {
@@ -53,6 +56,22 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             repo.setFilter(docId, pageId, filter)
             _document.value = repo.getDocument(docId)
+        }
+    }
+
+    fun exportPdf(docId: String, uri: Uri, onResult: (Boolean) -> Unit) {
+        val doc = _document.value ?: return
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    val salida = getApplication<Application>().contentResolver.openOutputStream(uri)
+                        ?: error("No se pudo abrir el archivo")
+                    salida.use { out ->
+                        PdfExporter.export(doc, { repo.pageFile(docId, it) }, out)
+                    }
+                }.isSuccess
+            }
+            onResult(ok)
         }
     }
 }
