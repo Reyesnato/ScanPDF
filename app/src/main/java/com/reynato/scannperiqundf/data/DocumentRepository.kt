@@ -1,3 +1,8 @@
+package com.reynato.scannperiqundf.data
+
+import ScanDocument
+import ScanFilter
+import ScanPage
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

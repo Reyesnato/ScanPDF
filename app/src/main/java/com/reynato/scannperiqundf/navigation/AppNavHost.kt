@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.reynato.scannperiqundf.ui.home.HomeScreen
+import com.reynato.scannperiqundf.camera.CameraScreen
 
 @Composable
 fun AppNavHost() {
@@ -17,8 +18,8 @@ fun AppNavHost() {
 
         composable(Routes.HOME) {
             HomeScreen(
-                onOpenDocument = {id -> navController.navigate(Routes.editor(id))},
-                onNewScan = { id -> navController.navigate(Routes.camera(id))}
+                onOpenDocument = { id -> navController.navigate(Routes.editor(id)) },
+                onNewScan = { id -> navController.navigate(Routes.camera(id)) }
             )
         }
 
@@ -35,7 +36,10 @@ fun AppNavHost() {
             arguments = listOf(navArgument("docId") { type = NavType.StringType })
         ) { entry ->
             val docId = entry.arguments?.getString("docId") ?: return@composable
-            Text("Cámara de $docId")
+            CameraScreen(
+                docId = docId,
+                onDone = {navController.popBackStack()}
+            )
         }
     }
 }
