@@ -18,6 +18,9 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     fun load() {
         viewModelScope.launch {
+            repo.listDocuments()
+                .filter { it.pages.isEmpty() }
+                .forEach { repo.deleteDocument(it.id) }
             _documents.value = repo.listDocuments()
         }
     }
@@ -26,6 +29,20 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val doc = repo.createDocument()
             onCreated(doc.id)
+        }
+    }
+
+    fun rename(id: String, title: String) {
+        viewModelScope.launch {
+            repo.rename(id, title)
+            load()
+        }
+    }
+
+    fun delete(id: String) {
+        viewModelScope.launch {
+            repo.deleteDocument(id)
+            load()
         }
     }
 }

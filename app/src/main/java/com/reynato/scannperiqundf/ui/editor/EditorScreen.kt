@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.reynato.scannperiqundf.data.ScanFilter
 import com.reynato.scannperiqundf.data.ScanPage
 import com.reynato.scannperiqundf.imaging.Filters
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,6 +120,7 @@ fun EditorScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .navigationBarsPadding()
                     .padding(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -218,6 +220,14 @@ fun EditorScreen(
             },
             confirmButton = {
                 TextButton(onClick = { selectedPage = null }) { Text("Cerrar") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deletePage(docId, page.id)
+                        selectedPage = null
+                    }
+                ) { Text("Eliminar página") }
             }
         )
     }

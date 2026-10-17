@@ -74,4 +74,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             onResult(ok)
         }
     }
+
+    fun deletePage(docId: String, pageId: String) {
+        viewModelScope.launch {
+            repo.deletePage(docId, pageId)
+            _document.value = repo.getDocument(docId)
+        }
+    }
 }

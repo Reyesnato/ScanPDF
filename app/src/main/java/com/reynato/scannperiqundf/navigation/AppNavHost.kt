@@ -1,6 +1,7 @@
 package com.reynato.scannperiqundf.navigation
 
 import androidx.compose.material3.Text
+import com.reynato.scannperiqundf.camera.CropScreen
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -42,15 +43,34 @@ fun AppNavHost() {
         ) { entry ->
             val docId = entry.arguments?.getString("docId") ?: return@composable
             CameraScreen(
+                onPhotoTaken = { photoName ->
+                    navController.navigate(Routes.crop(docId, photoName))
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Routes.CROP,
+            arguments = listOf(
+                navArgument("docId") { type = NavType.StringType },
+                navArgument("photoName") { type = NavType.StringType }
+            )
+        ) { entry ->
+            val docId = entry.arguments?.getString("docId") ?: return@composable
+            val photoName = entry.arguments?.getString("photoName") ?: return@composable
+            CropScreen(
                 docId = docId,
-                onDone = {
+                photoName = photoName,
+                onAccepted = {
                     val volvio = navController.popBackStack(Routes.EDITOR, false)
                     if (!volvio) {
                         navController.navigate(Routes.editor(docId)) {
                             popUpTo(Routes.HOME)
                         }
                     }
-                }
+                },
+                onCancel = { navController.popBackStack() }
             )
         }
     }
