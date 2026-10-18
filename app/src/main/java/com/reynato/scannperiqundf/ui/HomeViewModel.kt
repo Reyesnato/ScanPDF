@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.reynato.scannperiqundf.data.DocumentRepository
 import com.reynato.scannperiqundf.data.ScanDocument
 import kotlinx.coroutines.flow.MutableStateFlow
+import com.reynato.scannperiqundf.data.ScanPage
+import java.io.File
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
@@ -45,4 +47,6 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             load()
         }
     }
+
+    fun pageFile(docId: String, page: ScanPage): File = repo.pageFile(docId, page)
 }

@@ -26,6 +26,15 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
+import com.reynato.scannperiqundf.imaging.Filters
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.reynato.scannperiqundf.data.ScanDocument
 import com.reynato.scannperiqundf.ui.HomeViewModel
@@ -82,28 +92,43 @@ fun HomeScreen(
                             Text("${doc.pages.size} páginas · ${formato.format(Date(doc.updatedAt))}")
                         },
                         trailingContent = {
-                            Box {
-                                IconButton(onClick = { menuDocId = doc.id }) {
-                                    Icon(Icons.Default.MoreVert, contentDescription = "Opciones")
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                doc.pages.firstOrNull()?.let { first ->
+                                    AsyncImage(
+                                        model = viewModel.pageFile(doc.id, first),
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        colorFilter = Filters.matrix(first.filter)?.let {
+                                            ColorFilter.colorMatrix(ColorMatrix(it))
+                                        },
+                                        modifier = Modifier
+                                            .size(width = 48.dp, height = 64.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                    )
                                 }
-                                DropdownMenu(
-                                    expanded = menuDocId == doc.id,
-                                    onDismissRequest = { menuDocId = null }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Renombrar") },
-                                        onClick = {
-                                            menuDocId = null
-                                            renameDoc = doc
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Eliminar") },
-                                        onClick = {
-                                            menuDocId = null
-                                            deleteDoc = doc
-                                        }
-                                    )
+                                Box {
+                                    IconButton(onClick = { menuDocId = doc.id }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "Opciones")
+                                    }
+                                    DropdownMenu(
+                                        expanded = menuDocId == doc.id,
+                                        onDismissRequest = { menuDocId = null }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Renombrar") },
+                                            onClick = {
+                                                menuDocId = null
+                                                renameDoc = doc
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Eliminar") },
+                                            onClick = {
+                                                menuDocId = null
+                                                deleteDoc = doc
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         },

@@ -81,4 +81,10 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             _document.value = repo.getDocument(docId)
         }
     }
+    fun rename(docId: String, title: String) {
+        viewModelScope.launch {
+            repo.rename(docId, title)
+            _document.value = repo.getDocument(docId)
+        }
+    }
 }

@@ -34,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
@@ -70,6 +72,7 @@ fun EditorScreen(
         viewModel.movePage(from.index, to.index)
     }
     var selectedPage by remember { mutableStateOf<ScanPage?>(null) }
+    var showRename by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/pdf")
@@ -95,7 +98,14 @@ fun EditorScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(document?.title ?: "") },
+                title = {
+                    Text(
+                        text = document?.title ?: "",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.clickable { showRename = true }
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
@@ -228,6 +238,33 @@ fun EditorScreen(
                         selectedPage = null
                     }
                 ) { Text("Eliminar página") }
+            }
+        )
+    }
+
+    if (showRename) {
+        var texto by remember { mutableStateOf(document?.title ?: "") }
+        AlertDialog(
+            onDismissRequest = { showRename = false },
+            title = { Text("Renombrar documento") },
+            text = {
+                OutlinedTextField(
+                    value = texto,
+                    onValueChange = { texto = it },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = texto.isNotBlank(),
+                    onClick = {
+                        viewModel.rename(docId, texto)
+                        showRename = false
+                    }
+                ) { Text("Guardar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRename = false }) { Text("Cancelar") }
             }
         )
     }
