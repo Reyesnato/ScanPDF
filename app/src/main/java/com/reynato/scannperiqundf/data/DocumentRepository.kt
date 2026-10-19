@@ -109,7 +109,11 @@ class DocumentRepository(private val context: Context) {
         )
     }
 
-    suspend fun addPageFromFile(docId: String, source: File) = withContext(Dispatchers.IO) {
+    suspend fun addPageFromFile(
+        docId: String,
+        source: File,
+        filter: ScanFilter = ScanFilter.SCAN
+    ) = withContext(Dispatchers.IO) {
         val doc = getDocument(docId) ?: return@withContext
         val pageId = UUID.randomUUID().toString()
         val fileName = "$pageId.jpg"
@@ -117,7 +121,29 @@ class DocumentRepository(private val context: Context) {
         source.delete()
         save(
             doc.copy(
-                pages = doc.pages + ScanPage(id = pageId, fileName = fileName),
+                pages = doc.pages + ScanPage(id = pageId, fileName = fileName, filter = filter),
+                updatedAt = System.currentTimeMillis()
+            )
+        )
+    }
+
+    suspend fun replacePageImage(
+        docId: String,
+        pageId: String,
+        source: File,
+        filter: ScanFilter
+    ) = withContext(Dispatchers.IO) {
+        val doc = getDocument(docId) ?: return@withContext
+        val old = doc.pages.firstOrNull { it.id == pageId } ?: return@withContext
+        val newName = "${UUID.randomUUID()}.jpg"
+        source.copyTo(File(pagesDir(docId), newName), overwrite = true)
+        source.delete()
+        File(pagesDir(docId), old.fileName).delete()
+        save(
+            doc.copy(
+                pages = doc.pages.map {
+                    if (it.id == pageId) it.copy(fileName = newName, filter = filter) else it
+                },
                 updatedAt = System.currentTimeMillis()
             )
         )
@@ -137,6 +163,16 @@ class DocumentRepository(private val context: Context) {
             val nuevas = doc.pages.map { if (it.id == pageId) it.copy(filter = filter) else it }
             save(doc.copy(pages = nuevas, updatedAt = System.currentTimeMillis()))
         }
+
+    suspend fun setFilterForAll(docId: String, filter: ScanFilter) = withContext(Dispatchers.IO) {
+        val doc = getDocument(docId) ?: return@withContext
+        save(
+            doc.copy(
+                pages = doc.pages.map { it.copy(filter = filter) },
+                updatedAt = System.currentTimeMillis()
+            )
+        )
+    }
 
     suspend fun deletePage(docId: String, pageId: String) = withContext(Dispatchers.IO) {
         val doc = getDocument(docId) ?: return@withContext

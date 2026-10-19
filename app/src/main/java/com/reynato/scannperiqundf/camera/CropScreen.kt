@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -13,10 +14,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -31,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -40,6 +48,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.reynato.scannperiqundf.data.DocumentRepository
+import com.reynato.scannperiqundf.data.ScanFilter
+import com.reynato.scannperiqundf.data.ScanPage
+import com.reynato.scannperiqundf.imaging.Filters
 import com.reynato.scannperiqundf.imaging.ImageEdit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -51,50 +62,114 @@ import kotlin.math.roundToInt
 
 private data class CropRect(val l: Float, val t: Float, val r: Float, val b: Float)
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CropScreen(
     docId: String,
-    photoName: String,
+    photoName: String?,
+    pageId: String?,
     onAccepted: () -> Unit,
     onCancel: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val repo = remember { DocumentRepository(context.applicationContext) }
-    val file = remember(photoName) { File(context.cacheDir, photoName) }
+    val editing = pageId != null
+
+    val page by produceState<ScanPage?>(null, docId, pageId) {
+        value = if (pageId == null) null else withContext(Dispatchers.IO) {
+            repo.getDocument(docId)?.pages?.firstOrNull { it.id == pageId }
+        }
+    }
+
+    val file: File? = if (editing) {
+        page?.let { repo.pageFile(docId, it) }
+    } else {
+        photoName?.let { File(context.cacheDir, it) }
+    }
 
     var rotation by remember { mutableIntStateOf(0) }
     var processing by remember { mutableStateOf(false) }
-    var crop by remember(rotation) { mutableStateOf(CropRect(0.05f, 0.05f, 0.95f, 0.95f)) }
+    var filter by remember(page) { mutableStateOf(page?.filter ?: ScanFilter.SCAN) }
 
-    val base by produceState<Bitmap?>(initialValue = null, file) {
-        value = withContext(Dispatchers.IO) { ImageEdit.load(file, 1600) }
+    val inicial = if (editing) CropRect(0f, 0f, 1f, 1f) else CropRect(0.05f, 0.05f, 0.95f, 0.95f)
+    var crop by remember(rotation) { mutableStateOf(inicial) }
+
+    val base by produceState<Bitmap?>(null, file) {
+        value = file?.let { f -> withContext(Dispatchers.IO) { ImageEdit.load(f, 1600) } }
     }
     val display = remember(base, rotation) { base?.let { ImageEdit.rotate(it, rotation) } }
+    val previewFilter = remember(filter) {
+        Filters.matrix(filter)?.let { ColorFilter.colorMatrix(ColorMatrix(it)) }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(MaterialTheme.colorScheme.surface)
             .systemBarsPadding()
     ) {
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .background(Color.Black)
+        ) {
             val bmp = display
             if (bmp == null) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
-                CropCanvas(bitmap = bmp, crop = crop, onCropChange = { crop = it })
+                CropCanvas(
+                    bitmap = bmp,
+                    crop = crop,
+                    colorFilter = previewFilter,
+                    onCropChange = { crop = it }
+                )
+            }
+        }
+
+        if (editing) {
+            TextButton(
+                enabled = !processing,
+                onClick = {
+                    processing = true
+                    scope.launch {
+                        withContext(Dispatchers.IO) { repo.deletePage(docId, pageId!!) }
+                        processing = false
+                        onAccepted()
+                    }
+                },
+                modifier = Modifier.padding(horizontal = 12.dp)
+            ) { Text("Eliminar página") }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ScanFilter.entries.forEach { f ->
+                FilterChip(
+                    selected = filter == f,
+                    onClick = { filter = f },
+                    label = { Text(Filters.label(f)) }
+                )
             }
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedButton(
                 enabled = !processing,
                 onClick = {
-                    file.delete()
+                    if (!editing) file?.delete()
                     onCancel()
                 },
                 modifier = Modifier.weight(1f)
@@ -109,24 +184,42 @@ fun CropScreen(
             Button(
                 enabled = !processing && display != null,
                 onClick = {
-                    processing = true
-                    val c = crop
-                    val rot = rotation
-                    scope.launch {
-                        val ok = withContext(Dispatchers.IO) {
-                            runCatching {
-                                val full = ImageEdit.load(file, 3000) ?: error("Sin imagen")
-                                val result = ImageEdit.crop(
-                                    ImageEdit.rotate(full, rot), c.l, c.t, c.r, c.b
-                                )
-                                val out = File(context.cacheDir, "${UUID.randomUUID()}.jpg")
-                                ImageEdit.save(result, out)
-                                file.delete()
-                                repo.addPageFromFile(docId, out)
-                            }.isSuccess
+                    val src = file
+                    if (src != null) {
+                        processing = true
+                        val c = crop
+                        val rot = rotation
+                        val fil = filter
+                        scope.launch {
+                            val ok = withContext(Dispatchers.IO) {
+                                runCatching {
+                                    val sinCambios = editing && rot == 0 &&
+                                            c.l <= 0.001f && c.t <= 0.001f &&
+                                            c.r >= 0.999f && c.b >= 0.999f
+                                    if (sinCambios) {
+                                        repo.setFilter(docId, pageId!!, fil)
+                                    } else {
+                                        val completa = ImageEdit.load(src, 3000)
+                                            ?: error("Sin imagen")
+                                        val resultado = ImageEdit.crop(
+                                            ImageEdit.rotate(completa, rot),
+                                            c.l, c.t, c.r, c.b
+                                        )
+                                        val salida =
+                                            File(context.cacheDir, "${UUID.randomUUID()}.jpg")
+                                        ImageEdit.save(resultado, salida)
+                                        if (editing) {
+                                            repo.replacePageImage(docId, pageId!!, salida, fil)
+                                        } else {
+                                            src.delete()
+                                            repo.addPageFromFile(docId, salida, fil)
+                                        }
+                                    }
+                                }.isSuccess
+                            }
+                            processing = false
+                            if (ok) onAccepted() else onCancel()
                         }
-                        processing = false
-                        if (ok) onAccepted() else onCancel()
                     }
                 },
                 modifier = Modifier.weight(1f)
@@ -139,6 +232,7 @@ fun CropScreen(
 private fun CropCanvas(
     bitmap: Bitmap,
     crop: CropRect,
+    colorFilter: ColorFilter?,
     onCropChange: (CropRect) -> Unit
 ) {
     val image = remember(bitmap) { bitmap.asImageBitmap() }
@@ -193,18 +287,22 @@ private fun CropCanvas(
                                         l = (c.l + dx).coerceIn(0f, c.r - minSize),
                                         t = (c.t + dy).coerceIn(0f, c.b - minSize)
                                     )
+
                                     1 -> c.copy(
                                         r = (c.r + dx).coerceIn(c.l + minSize, 1f),
                                         t = (c.t + dy).coerceIn(0f, c.b - minSize)
                                     )
+
                                     2 -> c.copy(
                                         l = (c.l + dx).coerceIn(0f, c.r - minSize),
                                         b = (c.b + dy).coerceIn(c.t + minSize, 1f)
                                     )
+
                                     3 -> c.copy(
                                         r = (c.r + dx).coerceIn(c.l + minSize, 1f),
                                         b = (c.b + dy).coerceIn(c.t + minSize, 1f)
                                     )
+
                                     4 -> {
                                         val w = c.r - c.l
                                         val h = c.b - c.t
@@ -212,6 +310,7 @@ private fun CropCanvas(
                                         val nt = (c.t + dy).coerceIn(0f, 1f - h)
                                         CropRect(nl, nt, nl + w, nt + h)
                                     }
+
                                     else -> c
                                 }
                             )
@@ -224,7 +323,8 @@ private fun CropCanvas(
             drawImage(
                 image = image,
                 dstOffset = IntOffset(ox.roundToInt(), oy.roundToInt()),
-                dstSize = IntSize(dw.roundToInt(), dh.roundToInt())
+                dstSize = IntSize(dw.roundToInt(), dh.roundToInt()),
+                colorFilter = colorFilter
             )
 
             val l = ox + crop.l * dw

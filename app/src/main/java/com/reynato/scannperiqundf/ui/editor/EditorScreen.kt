@@ -63,6 +63,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 fun EditorScreen(
     docId: String,
     onTakePhotos: () -> Unit,
+    onEditPage: (String) -> Unit,
     onBack: () -> Unit,
     viewModel: EditorViewModel = viewModel()
 ) {
@@ -73,6 +74,7 @@ fun EditorScreen(
     }
     var selectedPage by remember { mutableStateOf<ScanPage?>(null) }
     var showRename by remember { mutableStateOf(false) }
+    var showFilterAll by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/pdf")
@@ -114,14 +116,9 @@ fun EditorScreen(
                 actions = {
                     TextButton(
                         enabled = document?.pages?.isNotEmpty() == true,
-                        onClick = {
-                            val nombre = (document?.title ?: "Escaneo")
-                                .replace("/", "-")
-                                .replace(":", "-")
-                            exportLauncher.launch("$nombre.pdf")
-                        }
+                        onClick = { showFilterAll = true }
                     ) {
-                        Text("Exportar PDF")
+                        Text("Filtros")
                     }
                 }
             )
@@ -175,7 +172,7 @@ fun EditorScreen(
                     val index = doc.pages.indexOf(page) + 1
                     ReorderableItem(reorderState, key = page.id) { isDragging ->
                         Card(
-                            onClick = { selectedPage = page },
+                            onClick = { onEditPage(page.id) },
                             modifier = Modifier.longPressDraggableHandle(
                                 onDragStopped = { viewModel.saveOrder() }
                             )
@@ -265,6 +262,36 @@ fun EditorScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showRename = false }) { Text("Cancelar") }
+            }
+        )
+    }
+    if (showFilterAll) {
+        val actual = document?.pages?.map { it.filter }?.distinct()?.singleOrNull()
+        AlertDialog(
+            onDismissRequest = { showFilterAll = false },
+            title = { Text("Filtro para todas las páginas") },
+            text = {
+                Column {
+                    ScanFilter.entries.forEach { filtro ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setFilterForAll(docId, filtro)
+                                    showFilterAll = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = actual == filtro, onClick = null)
+                            Spacer(Modifier.width(12.dp))
+                            Text(Filters.label(filtro))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFilterAll = false }) { Text("Cerrar") }
             }
         )
     }

@@ -33,6 +33,7 @@ fun AppNavHost() {
             EditorScreen(
                 docId = docId,
                 onTakePhotos = { navController.navigate(Routes.camera(docId)) },
+                onEditPage = { pageId -> navController.navigate(Routes.editPage(docId, pageId)) },
                 onBack = { navController.popBackStack() }
             )
         }
@@ -62,6 +63,7 @@ fun AppNavHost() {
             CropScreen(
                 docId = docId,
                 photoName = photoName,
+                pageId = null,
                 onAccepted = {
                     val volvio = navController.popBackStack(Routes.EDITOR, false)
                     if (!volvio) {
@@ -70,6 +72,24 @@ fun AppNavHost() {
                         }
                     }
                 },
+                onCancel = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Routes.EDIT_PAGE,
+            arguments = listOf(
+                navArgument("docId") { type = NavType.StringType },
+                navArgument("pageId") { type = NavType.StringType }
+            )
+        ) { entry ->
+            val docId = entry.arguments?.getString("docId") ?: return@composable
+            val pageId = entry.arguments?.getString("pageId") ?: return@composable
+            CropScreen(
+                docId = docId,
+                photoName = null,
+                pageId = pageId,
+                onAccepted = { navController.popBackStack() },
                 onCancel = { navController.popBackStack() }
             )
         }

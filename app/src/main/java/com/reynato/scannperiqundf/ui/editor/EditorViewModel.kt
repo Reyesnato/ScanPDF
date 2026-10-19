@@ -59,6 +59,13 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun setFilterForAll(docId: String, filter: ScanFilter) {
+        viewModelScope.launch {
+            repo.setFilterForAll(docId, filter)
+            _document.value = repo.getDocument(docId)
+        }
+    }
+
     fun exportPdf(docId: String, uri: Uri, onResult: (Boolean) -> Unit) {
         val doc = _document.value ?: return
         viewModelScope.launch {
